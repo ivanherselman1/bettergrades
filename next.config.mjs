@@ -21,6 +21,14 @@ const config = withPlugins([[withBundleAnalyzer({ enabled: env.ANALYZE })]], {
       { source: "/ping", destination: "/api/health" },
     ]
   },
+  webpack: (config) => {
+    config.resolve.alias.canvas = false;
+    config.module.rules.push({
+      test: /\.pdf$/,
+      use: 'file-loader'
+    });
+    return config;
+  },
 })
 
 export default config

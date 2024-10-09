@@ -1,0 +1,348 @@
+Detailed Specification for Modular Document Processing Application
+This specification outlines the development of a modular document processing application using Next.js 14+. The application allows users to upload multiple documents, select specific pages or ranges, extract text and images, process images using AI for descriptions, and generate structured outputs such as lessons or tests. The specification is detailed and step-by-step to ensure clarity for developers implementing the project.
+
+Table of Contents
+Overview
+Functional Requirements
+1. Document Upload and Selection
+2. Text and Image Extraction
+3. Image Processing with AI
+4. Stitching Content
+5. Generating Structured Output
+6. Data Storage and Management
+Non-Functional Requirements
+Technologies and Tools
+Installed Packages
+Architecture
+System Components
+Workflow Overview
+Data Models
+Document Model
+Image Model
+AI Output Model
+API Endpoints
+Frontend UI Flow
+Sequence of Operations
+Error Handling and Edge Cases
+Security Considerations
+Performance Optimizations
+Assumptions and Limitations
+Future Enhancements
+Conclusion
+Overview
+The application enables users to:
+
+Upload multiple documents (PDF or DOCX).
+Select specific pages or ranges for processing.
+Extract text and images from selected pages.
+Process images using AI to generate descriptions.
+Stitch text and image descriptions together.
+Generate structured outputs (lessons or tests) using AI.
+Organize content through tagging and categorization.
+The process is modular, broken into discrete steps to optimize performance and prevent long-running tasks from exceeding server timeouts.
+
+Functional Requirements
+1. Document Upload and Selection
+1.1 Multiple Document Support
+Upload Multiple Documents: Users can upload multiple documents simultaneously.
+Supported Formats: PDF and DOCX.
+Document Types: Learning materials, study guides, previous exams, memoranda, personal notes.
+Document Size Limit: Maximum of 250 pages per document.
+Metadata Storage: Store document metadata (ID, name, type, upload date, user ID).
+1.2 Selective Content Usage
+Page Range Specification: Users can input specific page ranges for each document (e.g., pages 1-20, 29-40).
+Manual Page Selection:
+Integrate a PDF viewer within the UI.
+Users can manually select pages by clicking on them.
+Selected pages are highlighted for visual confirmation.
+1.3 Content Organization
+Tagging and Categorization:
+Users can tag documents (e.g., "Study Guide", "Notes").
+Categories help in organizing and referencing content during test preparation.
+2. Text and Image Extraction
+2.1 Text Extraction
+Use Google Document AI:
+Utilize the @google-cloud/documentai package.
+Extract text from specified pages.
+Maintain document structure (headings, paragraphs).
+2.2 Image Extraction
+PDF Documents: Use pdf-lib to extract images.
+DOCX Documents: Use a suitable DOCX parser.
+Image Metadata:
+Assign unique IDs to each image.
+Record position within the document.
+Store in a database.
+3. Image Processing with AI
+3.1 Upload Images to S3
+AWS S3:
+Use the aws-sdk package.
+Upload extracted images to an S3 bucket.
+Generate accessible URLs for each image.
+Store URLs along with image metadata.
+3.2 Generate Image Descriptions
+OpenAI Vision API:
+Use axios for API calls.
+Send image URLs to the API.
+Receive textual descriptions.
+Store descriptions linked to image IDs.
+4. Stitching Content
+4.1 Combine Text and Image Descriptions
+Embed Image Descriptions:
+Replace image placeholders in the text with descriptions.
+Include image IDs for reference.
+Example: Image description: [Description]. [Image ID: image123]
+4.2 Maintain Document Structure
+Preserve Order:
+Ensure text and images are in the correct sequence.
+Keep headings, paragraphs, and formatting intact.
+5. Generating Structured Output
+5.1 Prepare Content for AI
+Consolidate Content:
+Prepare the stitched text (with image descriptions) for AI processing.
+Ensure the content is coherent and logically structured.
+5.2 Send to OpenAI GPT-4
+Generate Output:
+Use axios to call OpenAI's API.
+Provide the content as input.
+Specify the desired output (e.g., lessons, test questions).
+5.3 Receive and Store AI Output
+Structured JSON Response:
+AI returns output in a structured format.
+Includes references to image IDs where applicable.
+Store in Database:
+Link AI output to the original document.
+Make it retrievable for the user.
+6. Data Storage and Management
+Database:
+Use MongoDB (mongoose package) for data storage.
+Store documents, images, and AI outputs.
+Data Models:
+Define schemas for documents, images, and AI outputs.
+Non-Functional Requirements
+Performance:
+Each processing step must complete within server timeout limits (e.g., 60 seconds on Vercel Pro).
+Scalability:
+The system should handle multiple users and documents concurrently.
+Security:
+Secure handling of user data and documents.
+Protect API keys and credentials.
+Usability:
+Provide an intuitive UI for uploading, selecting, and managing documents.
+Technologies and Tools
+Installed Packages
+The project will use the following packages:
+
+json
+Copy code
+{
+  "@google-cloud/documentai": "^8.10.0",
+  "@mui/material": "^6.1.2",
+  "@next/bundle-analyzer": "^14.2.3",
+  "aws-sdk": "^2.1691.0",
+  "axios": "^1.7.7",
+  "mongoose": "^8.7.0",
+  "multer": "^1.4.5-lts.1",
+  "next": "^14.2.3",
+  "next-auth": "^4.24.8",
+  "next-connect": "^1.0.0",
+  "pdf-lib": "^1.17.1",
+  "react": "^18.3.1",
+  "react-dom": "^18.3.1",
+  "react-pdf": "^9.1.1",
+  "zod": "^3.23.8"
+}
+Front-End Libraries:
+@mui/material: For UI components.
+react-pdf: To render PDFs in the browser.
+Backend Libraries:
+@google-cloud/documentai: For text extraction.
+pdf-lib: For image extraction from PDFs.
+aws-sdk: For interaction with AWS S3.
+axios: For making HTTP requests to AI services.
+mongoose: For MongoDB interactions.
+multer: For handling file uploads.
+next-connect: For handling middleware in API routes.
+zod: For schema validation.
+Architecture
+System Components
+Frontend (Next.js):
+
+User interface for document upload, selection, and viewing results.
+Backend (Next.js API Routes):
+
+Handles file uploads, processing steps, and communication with AI services.
+Database (MongoDB):
+
+Stores documents, images, metadata, and AI outputs.
+External Services:
+
+Google Document AI: Text extraction.
+AWS S3: Image storage.
+OpenAI Vision API: Image descriptions.
+OpenAI GPT-4: Structured output generation.
+Workflow Overview
+Document Upload: User uploads documents and selects pages.
+Text and Image Extraction: Extract text and images from selected pages.
+Image Processing: Upload images to S3 and get descriptions.
+Content Stitching: Combine text and image descriptions.
+AI Processing: Generate structured output using GPT-4.
+Result Presentation: Display output to the user.
+Data Models
+Document Model
+typescript
+Copy code
+interface Document {
+  documentId: string;
+  userId: string;
+  fileName: string;
+  documentType: 'PDF' | 'DOCX';
+  uploadDate: Date;
+  status: 'uploaded' | 'extracted' | 'imagesProcessed' | 'aiProcessed' | 'completed' | 'failed';
+  tags: string[];
+  pageRanges: string; // e.g., "1-10,15-20"
+  extractedText?: string;
+  images?: string[]; // Array of image IDs
+  aiOutputId?: string;
+}
+Image Model
+typescript
+Copy code
+interface Image {
+  imageId: string;
+  documentId: string;
+  s3Url: string;
+  description?: string;
+  position: number; // Position in the document
+}
+AI Output Model
+typescript
+Copy code
+interface AIOutput {
+  aiOutputId: string;
+  documentId: string;
+  generatedAt: Date;
+  outputType: 'lesson' | 'test';
+  content: any; // The structured JSON output from the AI
+}
+API Endpoints
+POST /api/upload
+
+Description: Upload documents and metadata.
+Body: FormData with files and metadata (tags, page ranges).
+Response: { status: 'uploaded', documentId: '...' }
+POST /api/extract
+
+Description: Extract text and images from documents.
+Body: { documentId: '...' }
+Response: { status: 'extracted', documentId: '...' }
+POST /api/process-images
+
+Description: Upload images to S3 and get AI descriptions.
+Body: { documentId: '...' }
+Response: { status: 'imagesProcessed', documentId: '...' }
+POST /api/generate-output
+
+Description: Generate structured output using GPT-4.
+Body: { documentId: '...', outputType: 'lesson' | 'test' }
+Response: { status: 'aiProcessed', documentId: '...' }
+GET /api/status
+
+Description: Get processing status.
+Query: ?documentId=...
+Response: { status: '...', progress: '...' }
+GET /api/output
+
+Description: Retrieve AI-generated output.
+Query: ?documentId=...
+Response: { status: 'completed', aiOutput: { ... } }
+Frontend UI Flow
+1. Document Upload Page
+Upload Interface:
+Users select multiple files.
+Input fields for tags and page ranges.
+PDF Viewer:
+Display uploaded PDFs.
+Allow page selection via clicking.
+Highlight selected pages.
+2. Processing Status Page
+Real-Time Updates:
+Show current processing step (e.g., "Extracting text...").
+Progress indicators.
+Status Polling:
+Frontend polls /api/status to get updates.
+3. Results Page
+Display Output:
+Show generated lessons or test questions.
+Include images where applicable.
+Interaction:
+Users can review, download, or share the output.
+Sequence of Operations
+Upload and Selection:
+
+User uploads documents and selects pages.
+Frontend sends data to /api/upload.
+Text and Image Extraction:
+
+Backend extracts text and images.
+Updates document status to 'extracted'.
+Image Processing:
+
+Backend uploads images to S3.
+Sends images to OpenAI Vision API.
+Stores descriptions.
+Updates status to 'imagesProcessed'.
+Content Stitching and AI Processing:
+
+Backend stitches text and image descriptions.
+Sends content to GPT-4.
+Stores AI output.
+Updates status to 'aiProcessed'.
+Result Retrieval:
+
+Frontend polls /api/status until status is 'completed'.
+Retrieves output via /api/output.
+Error Handling and Edge Cases
+Timeouts:
+
+Ensure each API call completes within server timeout limits.
+Break long processes into smaller steps.
+Network Failures:
+
+Implement retries for network calls (e.g., to AI services).
+Handle failed uploads gracefully.
+Invalid Inputs:
+
+Validate user inputs (file types, page ranges).
+Provide meaningful error messages.
+API Limits:
+
+Monitor usage of external APIs.
+Implement rate limiting if necessary.
+Security Considerations
+Authentication and Authorization:
+
+Use next-auth for user authentication.
+Ensure users can only access their own data.
+Data Protection:
+
+Securely store documents and personal data.
+Use HTTPS for all API calls.
+API Keys Management:
+
+Store API keys (OpenAI, AWS) securely using environment variables.
+Input Validation:
+
+Sanitize all inputs to prevent injections and XSS attacks.
+Performance Optimizations
+Concurrency:
+
+Process images and make API calls concurrently using Promise.all.
+Asynchronous Operations:
+
+Utilize async/await for non-blocking code.
+Resource Management:
+
+Stream files where possible to reduce memory usage.
+Caching:
+
+Cache results of AI calls if appropriate
